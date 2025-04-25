@@ -1,17 +1,14 @@
+import React, { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Platform, StatusBar, ScrollView, ActivityIndicator, Alert, Keyboard } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const alturaStatusBar = StatusBar.currentHeight;
-const KEY_GEMINI = 'AIzaSyAUOlzA5v-v3u02QWHUAu5lCAGLjGHE9fA'; // Substitua pela sua chave de API
-
+const KEY_GEMINI = 'sua chave de api';
 const genAI = new GoogleGenerativeAI(KEY_GEMINI);
-
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash",
-});
-
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 const generationConfig = {
   temperature: 1,
   topP: 0.95,
@@ -20,11 +17,32 @@ const generationConfig = {
   responseMimeType: "text/plain",
 };
 
-export default function App() {
+const Stack = createNativeStackNavigator();
 
+function MenuPrincipal({ navigation }) {
+  return (
+    <View style={ESTILOS.menu}>
+      <Text style={ESTILOS.header}>🍽️ Cozinha Fácil</Text>
+      <TouchableOpacity style={ESTILOS.menuBtn} onPress={() => navigation.navigate("Home")}> 
+        <Text style={ESTILOS.menuText}>Receita com Ingredientes</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={ESTILOS.menuBtn} onPress={() => navigation.navigate("Sobremesa")}> 
+        <Text style={ESTILOS.menuText}>Sobremesas</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={ESTILOS.menuBtn} onPress={() => navigation.navigate("Substituicao")}> 
+        <Text style={ESTILOS.menuText}>Substituir Ingrediente</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={ESTILOS.menuBtn} onPress={() => navigation.navigate("BuscarPorNome")}> 
+        <Text style={ESTILOS.menuText}>Buscar Receita por Nome</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function HomeScreen() {
   const [load, setLoad] = useState(false);
   const [receita, setReceita] = useState("");
-
+  const [tituloReceita, setTituloReceita] = useState("");
   const [ingr1, setIngr1] = useState("");
   const [ingr2, setIngr2] = useState("");
   const [ingr3, setIngr3] = useState("");
@@ -32,24 +50,25 @@ export default function App() {
   const [ocasiao, setOcasiao] = useState("");
 
   async function gerarReceita() {
-    if (ingr1 === "" || ingr2 === "" || ingr3 === "" || ingr4 === "" || ocasiao === "") {
+    if (!ingr1 || !ingr2 || !ingr3 || !ingr4 || !ocasiao) {
       Alert.alert("Atenção", "Informe todos os ingredientes!", [{ text: "Beleza!" }]);
       return;
     }
     setReceita("");
+    setTituloReceita("");
     setLoad(true);
     Keyboard.dismiss();
 
-    const prompt = `Sugira uma receita detalhada para o ${ocasiao} usando os ingredientes: ${ingr1}, ${ingr2}, ${ingr3} e ${ingr4} e pesquise a receita no YouTube. Caso encontre, informe o link.`;
+    const prompt = `Sugira uma receita detalhada para o ${ocasiao} usando os ingredientes: ${ingr1}, ${ingr2}, ${ingr3} e ${ingr4}.`;
 
     try {
-      const chatSession = model.startChat({
-        generationConfig,
-        history: [],
-      });
-
+      const chatSession = model.startChat({ generationConfig, history: [] });
       const result = await chatSession.sendMessage(prompt);
-      setReceita(result.response.text());
+      const resposta = result.response.text();
+      const linhas = resposta.split('\n');
+      const titulo = linhas[0];
+      setTituloReceita(titulo);
+      setReceita(resposta);
     } catch (error) {
       console.error(error);
     } finally {
@@ -59,63 +78,171 @@ export default function App() {
 
   return (
     <View style={ESTILOS.container}>
-      <StatusBar barStyle="dark-content" translucent={true} backgroundColor="#F1F1F1" />
-      <Text style={ESTILOS.header}>Cozinha fácil</Text>
+      <Text style={ESTILOS.header}>Receita com Ingredientes</Text>
       <View style={ESTILOS.form}>
-        <Text style={ESTILOS.label}>Insira os ingredientes abaixo:</Text>
-        <TextInput
-          placeholder="Ingrediente 1"
-          style={ESTILOS.input}
-          value={ingr1}
-          onChangeText={(texto) => setIngr1(texto)}
-        />
-        <TextInput
-          placeholder="Ingrediente 2"
-          style={ESTILOS.input}
-          value={ingr2}
-          onChangeText={(texto) => setIngr2(texto)}
-        />
-        <TextInput
-          placeholder="Ingrediente 3"
-          style={ESTILOS.input}
-          value={ingr3}
-          onChangeText={(texto) => setIngr3(texto)}
-        />
-        <TextInput
-          placeholder="Ingrediente 4"
-          style={ESTILOS.input}
-          value={ingr4}
-          onChangeText={(texto) => setIngr4(texto)}
-        />
-        <TextInput
-          placeholder="Almoço ou Jantar"
-          style={ESTILOS.input}
-          value={ocasiao}
-          onChangeText={(texto) => setOcasiao(texto)}
-        />
+        <Text style={ESTILOS.label}>Ingredientes:</Text>
+        <TextInput placeholder="Ingrediente 1" style={ESTILOS.input} value={ingr1} onChangeText={setIngr1} />
+        <TextInput placeholder="Ingrediente 2" style={ESTILOS.input} value={ingr2} onChangeText={setIngr2} />
+        <TextInput placeholder="Ingrediente 3" style={ESTILOS.input} value={ingr3} onChangeText={setIngr3} />
+        <TextInput placeholder="Ingrediente 4" style={ESTILOS.input} value={ingr4} onChangeText={setIngr4} />
+        <TextInput placeholder="Almoço ou Jantar" style={ESTILOS.input} value={ocasiao} onChangeText={setOcasiao} />
+        <TouchableOpacity style={ESTILOS.button} onPress={gerarReceita}>
+          <Text style={ESTILOS.buttonText}>Gerar Receita</Text>
+        </TouchableOpacity>
       </View>
-
-      <TouchableOpacity style={ESTILOS.button} onPress={gerarReceita}>
-        <Text style={ESTILOS.buttonText}>Gerar receita</Text>
-        <MaterialCommunityIcons name="food-variant" size={24} color="#FFF" />
-      </TouchableOpacity>
-
-      <ScrollView contentContainerStyle={{ paddingBottom: 24, marginTop: 4, }} style={ESTILOS.containerScroll} showsVerticalScrollIndicator={false} >
+      <ScrollView style={ESTILOS.containerScroll}>
         {load && (
-          <View style={ESTILOS.content}>
-            <Text style={ESTILOS.title}>Produzindo receita...</Text>
-            <ActivityIndicator color="#000" size="large" />
-          </View>
+          <ActivityIndicator size="large" color="#000" />
         )}
-
-        {receita && (
-          <View style={ESTILOS.content}>
-            <Text style={ESTILOS.title}>Sua receita 👇</Text>
-            <Text style={{ lineHeight: 24 }}>{receita}</Text>
-          </View>
-        )}
+        {tituloReceita ? <Text style={ESTILOS.title}>🍲 {tituloReceita}</Text> : null}
+        {receita ? <Text style={ESTILOS.content}>{receita}</Text> : null}
       </ScrollView>
     </View>
+  );
+}
+
+// Tela de Sobremesas
+function TelaSobremesa() {
+  const [sobremesa, setSobremesa] = useState("");
+  const [tituloSobremesa, setTituloSobremesa] = useState("");
+  const [load, setLoad] = useState(false);
+
+  async function gerarSobremesa() {
+    setSobremesa("");
+    setTituloSobremesa("");
+    setLoad(true);
+
+    const prompt = "Sugira uma receita de sobremesa simples.";
+
+    try {
+      const chatSession = model.startChat({ generationConfig, history: [] });
+      const result = await chatSession.sendMessage(prompt);
+      const resposta = result.response.text();
+      const linhas = resposta.split('\n');
+      const titulo = linhas[0];
+      setTituloSobremesa(titulo);
+      setSobremesa(resposta);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoad(false);
+    }
+  }
+
+  return (
+    <View style={ESTILOS.container}>
+      <Text style={ESTILOS.header}>Sobremesas 🍰</Text>
+      <TouchableOpacity style={ESTILOS.button} onPress={gerarSobremesa}>
+        <Text style={ESTILOS.buttonText}>Buscar Sobremesa</Text>
+      </TouchableOpacity>
+      <ScrollView style={ESTILOS.containerScroll}>
+        {load && <ActivityIndicator size="large" color="#000" />}
+        {tituloSobremesa && <Text style={ESTILOS.title}>🍰 {tituloSobremesa}</Text>}
+        {sobremesa && <Text style={ESTILOS.content}>{sobremesa}</Text>}
+      </ScrollView>
+    </View>
+  );
+}
+
+// Tela de Substituição de Ingredientes
+function TelaSubstituicao() {
+  const [ingrediente, setIngrediente] = useState("");
+  const [substituicao, setSubstituicao] = useState("");
+  const [load, setLoad] = useState(false);
+
+  async function buscarSubstituicao() {
+    setSubstituicao("");
+    setLoad(true);
+
+    const prompt = `Qual é uma boa substituição para o ingrediente: ${ingrediente}?`;
+
+    try {
+      const chatSession = model.startChat({ generationConfig, history: [] });
+      const result = await chatSession.sendMessage(prompt);
+      const resposta = result.response.text();
+      setSubstituicao(resposta);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoad(false);
+    }
+  }
+
+  return (
+    <View style={ESTILOS.container}>
+      <Text style={ESTILOS.header}>Substituição de Ingredientes 🔁</Text>
+      <TextInput
+        placeholder="Ingrediente a ser substituído"
+        style={ESTILOS.input}
+        value={ingrediente}
+        onChangeText={setIngrediente}
+      />
+      <TouchableOpacity style={ESTILOS.button} onPress={buscarSubstituicao}>
+        <Text style={ESTILOS.buttonText}>Buscar Substituição</Text>
+      </TouchableOpacity>
+      <ScrollView style={ESTILOS.containerScroll}>
+        {load && <ActivityIndicator size="large" color="#000" />}
+        {substituicao && <Text style={ESTILOS.content}>{substituicao}</Text>}
+      </ScrollView>
+    </View>
+  );
+}
+
+// Tela de Busca por Nome
+function TelaBuscarPorNome() {
+  const [nomeReceita, setNomeReceita] = useState("");
+  const [receitaEncontrada, setReceitaEncontrada] = useState("");
+  const [load, setLoad] = useState(false);
+
+  async function buscarReceitaPorNome() {
+    setReceitaEncontrada("");
+    setLoad(true);
+
+    const prompt = `Encontre uma receita para: ${nomeReceita}`;
+
+    try {
+      const chatSession = model.startChat({ generationConfig, history: [] });
+      const result = await chatSession.sendMessage(prompt);
+      const resposta = result.response.text();
+      setReceitaEncontrada(resposta);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoad(false);
+    }
+  }
+
+  return (
+    <View style={ESTILOS.container}>
+      <Text style={ESTILOS.header}>Buscar Receita por Nome 🔍</Text>
+      <TextInput
+        placeholder="Nome da Receita"
+        style={ESTILOS.input}
+        value={nomeReceita}
+        onChangeText={setNomeReceita}
+      />
+      <TouchableOpacity style={ESTILOS.button} onPress={buscarReceitaPorNome}>
+        <Text style={ESTILOS.buttonText}>Buscar Receita</Text>
+      </TouchableOpacity>
+      <ScrollView style={ESTILOS.containerScroll}>
+        {load && <ActivityIndicator size="large" color="#000" />}
+        {receitaEncontrada && <Text style={ESTILOS.content}>{receitaEncontrada}</Text>}
+      </ScrollView>
+    </View>
+  );
+}
+
+export default function App() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator>
+        <Stack.Screen name="MenuPrincipal" component={MenuPrincipal} options={{ title: "Cozinha Fácil" }} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: "Receita por Ingredientes" }} />
+        <Stack.Screen name="Sobremesa" component={TelaSobremesa} />
+        <Stack.Screen name="Substituicao" component={TelaSubstituicao} />
+        <Stack.Screen name="BuscarPorNome" component={TelaBuscarPorNome} options={{ title: 'Buscar Receita por Nome' }} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 
@@ -123,65 +250,77 @@ const ESTILOS = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f1f1f1',
-    alignItems: 'center',
-    paddingTop: 20,
+    paddingTop: Platform.OS === 'android' ? alturaStatusBar : 54,
+    paddingHorizontal: 20,
   },
   header: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: 'bold',
-    paddingTop: Platform.OS === 'android' ? alturaStatusBar : 54
+    textAlign: 'center',
+    marginVertical: 20,
   },
   form: {
-    backgroundColor: '#FFF',
-    width: '90%',
+    backgroundColor: '#fff',
     borderRadius: 8,
     padding: 16,
-    marginTop: 16,
-    marginBottom: 8,
   },
   label: {
-    fontWeight: 'bold',
     fontSize: 18,
+    fontWeight: 'bold',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderRadius: 4,
-    borderColor: '#94a3b8',
-    padding: 8,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    padding: 10,
+    marginBottom: 10,
     fontSize: 16,
-    marginBottom: 16,
   },
   button: {
     backgroundColor: 'blue',
-    width: '90%',
-    borderRadius: 8,
-    flexDirection: 'row',
     padding: 14,
-    justifyContent: 'center',
+    borderRadius: 6,
     alignItems: 'center',
-    gap: 8,
+    marginTop: 10,
   },
   buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
     fontSize: 18,
-    color: '#FFF',
-    fontWeight: 'bold'
   },
   content: {
-    backgroundColor: '#FFF',
-    padding: 16,
-    width: '100%',
+    fontSize: 16,
+    lineHeight: 24,
     marginTop: 16,
-    borderRadius: 8,
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
+    marginTop: 20,
     textAlign: 'center',
-    marginBottom: 14
   },
   containerScroll: {
-    width: '90%',
-    marginTop: 8,
-  }
+    marginTop: 16,
+  },
+  menu: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f1f1f1',
+    padding: 20
+  },
+  menuBtn: {
+    backgroundColor: '#007bff',
+    padding: 16,
+    borderRadius: 8,
+    marginVertical: 10,
+    width: '100%',
+    alignItems: 'center',
+  },
+  menuText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold'
+  },
 });
